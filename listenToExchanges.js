@@ -1,58 +1,65 @@
 const WebSocket = require('ws');
 const { watchMint } = require('./mintWatcher');
 const { bot } = require('./botInstance');
-
 require('dotenv').config();
 
 const HELIUS_KEY = process.env.HELIUS_API_KEY;
 const BINANCE_CHAT_ID = Number(process.env.BINANCE_CHAT_ID);
 const PRIVATE_CHAT_ID = Number(process.env.PRIVATE_CHAT_ID);
 
-const KUCOIN_ADDRESS = 'BmFdpraQhkiDQE6SnfG5omcA1VwzqfXrwtNYBwWTymy6';
+const KUCOIN = 'BmFdpraQhkiDQE6SnfG5omcA1VwzqfXrwtNYBwWTymy6';
+const BINANCE = '5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9';
+
+const ACCOUNTS = [KUCOIN, BINANCE];
 
 const ws = new WebSocket(`wss://rpc.helius.xyz/?api-key=${HELIUS_KEY}`);
 
 ws.on('open', () => {
-  console.log(`📡 Тест: слушаем ВСЕ переводы с биржи KuCoin: ${KUCOIN_ADDRESS}`);
+  console.log('📡 Подписка на logsSubscribe для биржевых адресов');
   ws.send(JSON.stringify({
     jsonrpc: '2.0',
     id: 1,
-    method: 'addressSubscribe',
-    params: [{ address: KUCOIN_ADDRESS }, { commitment: 'confirmed' }]
+    method: 'logsSubscribe',
+    params: [
+      {
+        mentions: ACCOUNTS
+      },
+      {
+        commitment: 'confirmed'
+      }
+    ]
   }));
 });
 
 ws.on('message', async (data) => {
   try {
     const msg = JSON.parse(data);
-    const tx = msg.params?.result?.transaction;
-    const instructions = tx?.message?.instructions || [];
+    if (!msg.params?.result?.value) return;
 
-    for (const ix of instructions) {
-      if (ix.program === 'system' && ix.parsed?.type === 'transfer') {
-        const amount = Number(ix.parsed.info.lamports) / 1e9;
-        const from = ix.parsed.info.source;
-        const to = ix.parsed.info.destination;
+    const { logs, signature } = msg.params.result.value;
+    const logStr = logs.join(' ');
 
-        if (from === KUCOIN_ADDRESS) {
-          const label = 'Кук-1';
-          const summary = `🧪 [${label}] Тестовый перевод ${amount} SOL\n💰 Адрес: <code>${to}</code>\n⏳ Ожидаем mint...`;
-          console.log(summary);
-          bot.sendMessage(PRIVATE_CHAT_ID, summary, { parse_mode: 'HTML' });
+    const isTransfer = logStr.includes('Program log: Instruction: Transfer');
+    const matchedAccount = ACCOUNTS.find(acc => logStr.includes(acc));
+    if (!isTransfer || !matchedAccount) return;
 
-          watchMint(to, label, PRIVATE_CHAT_ID);
-        }
-      }
-    }
-  } catch (err) {
-    console.error(`❌ WebSocket ошибка: ${err.message}`);
+    const label = matchedAccount === KUCOIN
+      ? (logStr.includes('lamports: 68.99') ? 'Кук-3' : 'Кук-1')
+      : 'Бинанс';
+
+    const targetChat = (label === 'Бинанс') ? BINANCE_CHAT_ID : PRIVATE_CHAT_ID;
+
+    const short = matchedAccount.slice(0, 4) + '..' + matchedAccount.slice(-4);
+    const summary = `⚠️ [${label}] Обнаружен перевод с ${short}\n💰 Ожидаем mint...`;
+    console.log(summary);
+    bot.sendMessage(targetChat, summary, { parse_mode: 'HTML' });
+
+    watchMint(matchedAccount, label, targetChat);
+
+  } catch (e) {
+    console.error(`💥 Ошибка logsSubscribe: ${e.message}`);
   }
 });
 
-ws.on('close', () => {
-  console.log(`🔌 WebSocket закрыт для KuCoin`);
-});
-
-ws.on('error', (e) => {
-  console.error(`💥 WebSocket ошибка: ${e.message}`);
-});
+ws.on('close', () => console.log('🔌 WebSocket закрыт'));
+ws.on('error', (err) => console.error(`❌ WebSocket ошибка: ${err.message}`));
