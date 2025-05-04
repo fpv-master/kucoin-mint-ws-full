@@ -8,7 +8,7 @@ const HELIUS_KEY = process.env.HELIUS_API_KEY;
 const BINANCE_CHAT_ID = Number(process.env.BINANCE_CHAT_ID);
 const PRIVATE_CHAT_ID = Number(process.env.PRIVATE_CHAT_ID);
 
-const KUCOIN_ADDRESS = '6pB5Qk1WbA2uJipjTSyckU9NBz7iYrPKF3nB9uYoJ3vK';
+const KUCOIN_ADDRESS = 'BmFdpraQhkiDQE6SnfG5omcA1VwzqfXrwtNYBwWTymy6';
 
 const ws = new WebSocket(`wss://rpc.helius.xyz/?api-key=${HELIUS_KEY}`);
 
