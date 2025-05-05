@@ -7,19 +7,25 @@ const BINANCE = '5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9';
 
 const ACCOUNTS = [KUCOIN, BINANCE];
 
-const ws = new WebSocket(`wss://api.helius.xyz/v0/transactions-subscribe?api-key=${HELIUS_KEY}`);
+const ws = new WebSocket(`wss://rpc.helius.xyz/?api-key=${HELIUS_KEY}`);
 
 ws.on('open', () => {
-  console.log('🧪 DEBUG: Подключено к transactionsSubscribe без фильтрации');
-  ws.send(JSON.stringify({
-    type: 'subscribe',
-    accounts: ACCOUNTS,
-    commitment: 'confirmed'
-  }));
+  console.log('📡 Подключено к Helius: transactionSubscribe активен');
+  ACCOUNTS.forEach((address) => {
+    ws.send(JSON.stringify({
+      jsonrpc: '2.0',
+      id: Date.now(),
+      method: 'transactionSubscribe',
+      params: [
+        { account: address },
+        { commitment: 'confirmed' }
+      ]
+    }));
+  });
 });
 
 ws.on('message', (data) => {
-  console.log('📦 Входящее сообщение от Helius (transactionsSubscribe):');
+  console.log('📦 ВХОДЯЩАЯ ТРАНЗАКЦИЯ ОТ HELIUS (transactionSubscribe):');
   console.log(data);
 });
 
