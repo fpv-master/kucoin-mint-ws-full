@@ -7,28 +7,20 @@ const BINANCE = '5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9';
 
 const ACCOUNTS = [KUCOIN, BINANCE];
 
-const ws = new WebSocket(`wss://rpc.helius.xyz/?api-key=${HELIUS_KEY}`);
+const ws = new WebSocket(`wss://api.helius.xyz/v0/transactions-subscribe?api-key=${HELIUS_KEY}`);
 
 ws.on('open', () => {
-  console.log('🧪 DEBUG: Подписка на logsSubscribe (без фильтров)');
+  console.log('🧪 DEBUG: Подключено к transactionsSubscribe без фильтрации');
   ws.send(JSON.stringify({
-    jsonrpc: '2.0',
-    id: 1,
-    method: 'logsSubscribe',
-    params: [
-      { mentions: ACCOUNTS },
-      { commitment: 'confirmed' }
-    ]
+    type: 'subscribe',
+    accounts: ACCOUNTS,
+    commitment: 'confirmed'
   }));
 });
 
 ws.on('message', (data) => {
-  try {
-    console.log('📩 ВХОДЯЩИЕ ЛОГИ ОТ HELIUS:');
-    console.log(data);
-  } catch (e) {
-    console.error(`💥 Ошибка парсинга: ${e.message}`);
-  }
+  console.log('📦 Входящее сообщение от Helius (transactionsSubscribe):');
+  console.log(data);
 });
 
 ws.on('close', () => console.log('🔌 WebSocket закрыт'));
